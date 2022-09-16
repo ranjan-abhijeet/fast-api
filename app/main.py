@@ -1,18 +1,43 @@
 import datetime
+import psycopg2
+import time
+
+from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, Response, HTTPException, status
 from pydantic import BaseModel
 from data_db import data
 from typing import Optional
 from random import randrange
+from dotenv import dotenv_values
 
 app = FastAPI()
 
+SLEEP_TIME = 2
+
+while True:
+    try:
+        config = dotenv_values(".env")
+        host = config["HOST"]
+        database = config["DATABASE"]
+        user = config["USER"]
+        password = config["PASSWORD"]
+        database_connection = psycopg2.connect(
+            host=host,
+            database=database,
+            user=user,
+            password=password,
+            cursor_factory=RealDictCursor)
+        cursor = database_connection.cursor()
+        print("[+] Database connection established")
+        break
+    except Exception as err:
+        print(f"[-] Error: {err}")
+        time.sleep(SLEEP_TIME)
 
 class Post(BaseModel):
     title: str
     content: str
     published: bool = True
-    rating: Optional[int] = None
 
 
 def search_post_by_id(id: int):
@@ -82,7 +107,7 @@ def update_entire_post(id: int, post: Post):
                             detail=f"post with id: {id} not found")
     updated_data = post.dict()
     updated_data["id"] = id
-    data.append(updated_data) 
+    data.append(updated_data)
     return {
         "message": f"successfully updated post: {id}",
         "data":
