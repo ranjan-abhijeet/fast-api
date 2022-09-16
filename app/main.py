@@ -34,10 +34,11 @@ while True:
         print(f"[-] Error: {err}")
         time.sleep(SLEEP_TIME)
 
+
 class Post(BaseModel):
     title: str
     content: str
-    published: bool = True
+    publish: bool = True
 
 
 def search_post_by_id(id: int):
@@ -56,15 +57,20 @@ def find_post_index(id: int):
     return None
 
 
-@app.get("/posts")
-def get_posts(response: Response):
-    response.status_code = status.HTTP_200_OK
-    return data
+@app.get("/posts", status_code=status.HTTP_200_OK)
+def get_posts():
+    cursor.execute("""SELECT * FROM posts""")
+    posts = cursor.fetchall()
+    return posts
 
 
 @app.get("/posts/{id}")
 def get_post_by_id(id: int, response: Response):
-    return_data = search_post_by_id(id)
+    cursor.execute(f"""SELECT * FROM posts
+                    WHERE post_id = %s """, (id,))
+
+    return_data = cursor.fetchone()
+
     if not return_data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"post with id: {id} not found")
@@ -73,47 +79,52 @@ def get_post_by_id(id: int, response: Response):
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 def create_posts(post: Post, response: Response):
-    submitted_data = post.dict()
-    id = randrange(4, 10000000)
-    submitted_data["id"] = id
-    data.append(submitted_data)
+    cursor.execute(f"""INSERT INTO posts
+                    (title, content, publish)
+                    VALUES (%s, %s, %s) RETURNING * """, (
+                                            post.title,
+                                            post.content, 
+                                            post.publish))
 
+    new_post = cursor.fetchone()
+    database_connection.commit()
     return {
         "message": "successfully created post",
-        "data":
-            {
-                "title": post.title,
-                "post-id": id,
-                "date": datetime.datetime.now()
-            }
+        "data": new_post
     }
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
-    index = find_post_index(id)
-    if index == None:
+    cursor.execute("""DELETE FROM posts
+                    WHERE post_id = %s 
+                    RETURNING *""", (id,))
+
+    delete_post = cursor.fetchone()
+    if delete_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"post with id: {id} not found")
-    data.pop(index)
+    else:
+        database_connection.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.put("/posts/{id}", status_code=status.HTTP_202_ACCEPTED)
 def update_entire_post(id: int, post: Post):
-    index = find_post_index(id)
-    if index == None:
+    cursor.execute("""UPDATE posts
+                    SET title = %s, 
+                    content = %s, 
+                    publish = %s
+                    WHERE post_id = %s
+                    RETURNING * """, (post.title, post.content, post.publish, (id,)))
+    
+    updated_post = cursor.fetchone()
+    if updated_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"post with id: {id} not found")
-    updated_data = post.dict()
-    updated_data["id"] = id
-    data.append(updated_data)
-    return {
-        "message": f"successfully updated post: {id}",
-        "data":
-            {
-                "title": post.title,
-                "post-id": id,
-                "date": datetime.datetime.now()
-            }
-    }
+    else:
+        database_connection.commit()
+        return {
+            "message": f"successfully updated post: {id}",
+            "data": updated_post
+        }
