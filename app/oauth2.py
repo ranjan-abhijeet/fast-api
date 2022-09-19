@@ -10,7 +10,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 config = dotenv_values(".env")
 SECRET_KEY = config["JWT_SECRET_KEY"]
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 10
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
 def create_access_token(data: dict):
@@ -46,6 +46,6 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     token = verify_access_token(
         token=token, credentials_exception=credentials_exception)
     if token:
-        user = db.query(models.user).filter(models.User.id == token.id).first()
+        user = db.query(models.User).filter(models.User.user_id == token.id).first()
 
     return user
