@@ -7,7 +7,7 @@ from ..database import get_db
 router = APIRouter(
     prefix="/posts",
     tags=["POSTS"]
-)
+    )
 
 
 @router.get("/", status_code=status.HTTP_200_OK, response_model=List[schemas.PostResponse])
