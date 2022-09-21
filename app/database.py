@@ -1,10 +1,7 @@
 from . import config
-from venv import create
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from dotenv import dotenv_values
-
 
 username = config.settings.DATABASE_USERNAME
 password = config.settings.DATABASE_PASSWORD
